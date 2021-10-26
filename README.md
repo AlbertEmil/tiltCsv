@@ -2,7 +2,6 @@
 
 Log data from a [TILT Hydrometer](https://tilthydrometer.com/) to CSV files using a Raspberry Pi 3 B+. To handle data a [NodeJS](https://nodejs.org/en/) client based-on [`@abandonware/noble`](https://github.com/abandonware/noble) is used. Incoming is data is streamlined based on [RxJS](https://rxjs.dev/) observables. A user push button to start/stop data recording and status LED are implemented with the [`onoff` package](https://github.com/fivdi/onoff).
 
-
 ## Infrastructure
 
         +---------------+           +---------------+           +---------------+
@@ -10,7 +9,6 @@ Log data from a [TILT Hydrometer](https://tilthydrometer.com/) to CSV files usin
         |     Tilt      | --------> | NodeJS client | --------> |    CSV file   |
         |               |           |               |           |               |
         +---------------+           +---------------+           +---------------+
-
 
 General information about the software used in this project, as well as its proper installation and configuration can be found in the sections below. The hardware connections for button and LED are:
 
@@ -33,7 +31,6 @@ Download the latest release of Raspbian Lite from the [Raspbian homepage](https:
 
 In addition to boot from SD, some of the later Raspberry Pi models support [USB boot](https://www.raspberrypi.org/documentation/hardware/raspberrypi/bootmodes/msd.md) to boot form USB drives such as USB flash drives, HDDs or SSDs. This can be handy due to improved data transfer rates and improved reliability - espcially when working with data-driven applications and interfaces such as databases.
 
-
 ## Basic configuration (before and after first boot)
 
 If you want to access the Raspberry Pi in headless mode (without connecting keyboard, mouse and monitor to the Pi), you need to enable `ssh`. To do so, create an empty file with name `ssh` on the `BOOT` partition of the SD card or USB drive. In addition you can create Wifi credentials (for non-enterprise grade networks) as explained in the [headless docs](https://www.raspberrypi.org/documentation/configuration/wireless/headless.md).
@@ -48,14 +45,13 @@ The TILT hydrometer uses the [iBeacon](https://en.wikipedia.org/wiki/IBeacon) da
 
 _Remark: During development, it seemed that data is sent nearly every second._
 
-For communications with the Tilt Hydrometer, a NodeJS-based client (written in JavaScript) is used. An implementation of the [iBeacon data format](https://en.wikipedia.org/wiki/IBeacon#Technical_details) for NodeJS can be found in the [`@abandonware/noble` packages](https://github.com/abandonware/noble) which is used to communicate with the hydrometer. As the tilt device sends data wrapped in the [BLE `minor` and `major` fields](https://os.mbed.com/blog/entry/BLE-Beacons-URIBeacon-AltBeacons-iBeacon/), parsing the incoming data is required. The project [`node-beacon-scanner`](https://github.com/ansgomez/node-beacon-scanner) contains several methods to do this. As tilt complies with the iBeacon data format, [this parser](https://github.com/ansgomez/node-beacon-scanner/blob/master/lib/parser-ibeacon.js) can be utilized.
+For communications with the Tilt Hydrometer, a NodeJS-based client (written in JavaScript) is used. An implementation of the [iBeacon data format](https://en.wikipedia.org/wiki/IBeacon#Technical_details) for NodeJS can be found in the [`@abandonware/noble` package](https://github.com/abandonware/noble) which is used to communicate with the hydrometer. As the tilt device sends data wrapped in the [BLE `minor` and `major` fields](https://os.mbed.com/blog/entry/BLE-Beacons-URIBeacon-AltBeacons-iBeacon/), parsing the incoming data is required. The data protocol can be found [here](https://kvurd.com/blog/tilt-hydrometer-ibeacon-data-format/). The project [`node-beacon-scanner`](https://github.com/ansgomez/node-beacon-scanner) contains [a parser for the iBeacon format](https://github.com/ansgomez/node-beacon-scanner/blob/master/lib/parser-ibeacon.js) which will be adopted.
 
 In order to make all the measuremtens available for later analysis and visualization, every reading is stored in CSV files. The [`discover`](https://github.com/abandonware/noble#event-peripheral-discovered) event is [used for creating a RxJs observable](https://rxjs.dev/api/index/function/fromEvent). To listen just for the data broadcast by the Tilt Hydrometer and reduce the data rate, any incoming BLE beacon data is filtered first and then downsampled using RxJs' [`filter()`](https://rxjs.dev/api/operators/filter) and [`throttleTime()`](https://rxjs.dev/api/operators/throttleTime) operators. Further data processing is attached to the observable via [RxJs' `map()` operator](https://rxjs.dev/api/operators/map).
 
 _Remark: Incoming data is downsampled, so that other values are ignored and not averaged._
 
 The GPIOs available on header J1 are used to interact with the user push button and LED, the [GPIOs](https://www.raspberrypi.org/documentation/usage/gpio/) (available on header J1) are used. These are accessed via the NodeJS module `onfoff` which additionally provides button interrupts and [software-debounce](https://www.npmjs.com/package/onoff#debouncing-buttons).
-
 
 ### Install required packages, prerequisites and dependencies
 
@@ -72,7 +68,6 @@ The GPIOs available on header J1 are used to interact with the user push button 
 1. Allow `node` processes to access bluetooth devices without bein executed as root:
 
         sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
-
 
 ### Install files and enable `systemd` service
 
@@ -100,21 +95,17 @@ In order to execute [`tilt.js`](tilt.js) automatically after the system is boote
 
         sudo systemctl start tilt
 
-
 ### Log files
 
 The `systemd` service logs into the global `syslog`, which can be accessed via `journalctl -u tilt-client`. Some very basic diagnostics (about the `systemd` service) can be obtained from `systemctl` by using `systemctl status tilt`.
 
-
 ### Test and debug Bluetooth connection to Tilt
 
-For testing and debugging the Bluetooth connection to the Tilt Hydrometer, `hcitool lescan` and `hcidump -R` can be used. In addition, to check the BLE-module is working, Nordic Semiconductor's app [`nRF Connect for Mobile`](https://play.google.com/store/apps/details?id=no.nordicsemi.android.mcp) is handy. The data protocol can be found [here](https://kvurd.com/blog/tilt-hydrometer-ibeacon-data-format/).
-
+For testing and debugging the Bluetooth connection to the Tilt Hydrometer, `hcitool lescan` and `hcidump -R` can be used. In addition, to check the BLE-module is working, Nordic Semiconductor's app [`nRF Connect for Mobile`](https://play.google.com/store/apps/details?id=no.nordicsemi.android.mcp) is handy.
 
 ## Issues
 
 Feel free to submit any issues and feature requests using the Issue Tracker.
-
 
 ## Contributing
 
@@ -126,7 +117,6 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 1. Push your work back up to your fork.
 1. Submit a Pull request so that we can review your changes.
 
-
 ## License Information and module dependencies
 
 This project is published under the [MIT Licencse](https://choosealicense.com/licenses/mit/). A copy of the license text can be found in [`LICENSE.md`](LICENSE.md).
@@ -134,7 +124,7 @@ This project is published under the [MIT Licencse](https://choosealicense.com/li
 Direct dependencies, this project depends on, are:
 
 | Module               | license                                                       | Repo                                                    | npm                                                        |
-|----------------------|---------------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------------|
+| -------------------- | ------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------- |
 | noble                | [MIT](https://choosealicense.com/licenses/mit/)               | [Link](https://github.com/abandonware/noble)            | [Link](https://www.npmjs.com/package/@abandonware/noble)   |
 | onoff                | [MIT](https://choosealicense.com/licenses/mit/)               | [Link](https://github.com/fivdi/onoff)                  | [Link](https://www.npmjs.com/package/onoff)                |
 | moment               | [MIT](https://choosealicense.com/licenses/mit/)               | [Link](https://github.com/moment/moment)                | [Link](https://www.npmjs.com/package/moment)               |
