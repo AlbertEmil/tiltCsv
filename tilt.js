@@ -1,137 +1,91 @@
 "use strict";
 
-const Bleacon = require('bleacon');
-const Gpio = require('onoff').Gpio;
+const fs = require("fs");
 
-const config = require('./config');
-const dataParser = require('./dataParser');
-const db = require('./influxHandler');
-const {buttonEvent} = require('./helpers');
+const noble = require("@abandonware/noble");
+const Gpio = require("onoff").Gpio;
+const { fromEvent } = require("rxjs");
+const { filter, map, throttleTime } = require("rxjs/operators");
+const rfs = require("rotating-file-stream");
 
+const ble = require("./ble");
+const calculator = require("./calculator");
+const config = require("./config");
+const parser = require("./parser");
 
-const button = new Gpio(config.BUTTON_PIN, 'in', 'rising', { debounceTimeout: config.BUTTON_DEBOUNCE_MS });
-const led = new Gpio(config.LED_PIN, 'out');
+let runState = null;
 
-let specificGravityAtStart = null;
+const stream = rfs.createStream(config.CSV_BASE_NAME, {
+  // TODO: Use compression ?
+  // compress: "gzip",
+  interval: config.ROTATE_CSV_INTERVAL,
+});
 
+const button = new Gpio(config.BUTTON_PIN, "in", "rising", {
+  debounceTimeout: config.BUTTON_DEBOUNCE_MS,
+});
 
-const ledOn = () => led.writeSync(1)
-const ledOff = () => led.writeSync(0)
+const led = new Gpio(config.LED_PIN, "out");
 
-const ledBlink = (interval=config.LED_BLINK_INTERVAL_MS, duration=config.LED_BLINK_DURATION_MS) => {
-  // (https://github.com/fivdi/onoff#blink-an-led-using-the-synchronous-api)
-  const blinkInterval = setInterval( () => {
-    led.writeSync(led.readSync() === 0 ? 1 : 0);
-  }, interval);
+const setLedState = () => led.writeSync(Number(runState));
 
-  setTimeout( () => {
-    clearInterval(blinkInterval);
-    ledOff();
-  }, duration);
-}
+const buttonPressed = () => {
+  runState = !runState;
+  saveRunState();
+  setLedState();
+};
 
+const loadRunState = () => {
+  try {
+    const rawdata = fs.readFileSync("runState.json");
+    runState = JSON.parse(rawdata).isRunning;
+    console.log("Run state loaded: ", runState);
+  }
+  catch (_) {
+    runState = false;
+    console.log("Run state was not saved. Set state to: ", runState);
+  }
 
-const setInitialLedStatus = async () => {
-  const lastStartTime = await db.queryLastStartTime();
-  console.log(`isFermentationRunning: ${Boolean(lastStartTime)}  ${lastStartTime ? lastStartTime : ''}`);
-  if (!lastStartTime) return false;
+};
 
-  const specificGravity = await db.querySpecificGravity(lastStartTime);
-  console.log(`specificGravity: ${specificGravity}`);
-  if (!specificGravity) return false;
-  specificGravityAtStart = specificGravity;
-
-  ledOn();
-}
-
+const saveRunState = () => {
+  const data = JSON.stringify({ isRunning: runState });
+  fs.writeFileSync("runState.json", data);
+  console.log("Run state saved: ", runState);
+};
 
 (async () => {
-  console.log('Tilt client started');
-  db.createDatabase();
-  setInitialLedStatus();
-  Bleacon.startScanning();
+  console.log("Tilt client started");
 
+  loadRunState();
+  setLedState();
 
-  Bleacon.on('discover', function (bleacon) {
-    if (bleacon.uuid == config.TILT_RED_UUID) {
-      const temperature = dataParser.temperatureCelsius(bleacon);
-      const specificGravity = dataParser.specificGravity(bleacon);
-      const alcoholByVolume = dataParser.alcoholByVolume(specificGravityAtStart, specificGravity);
-      const alcoholByMass = dataParser.alcoholByMass(alcoholByVolume);
+  const incomingData = fromEvent(noble, "discover").pipe(
+    filter(_ => runState),
+    filter(x => x.uuid == config.TILT_RED_ADDRESS),
+    throttleTime(config.THROTTLE_DATA_MS),
+    map(x => ble.parse(x)),
+    map(x => calculator.calculate(x)),
+    map(x => parser.prettify(x)),
+    map(x => parser.csvString(x))
+  );
 
-      const data = [
-        {
-          variable: 'temperature',
-          value: temperature,
-          unit: '°C',
-        },
-        {
-          variable: 'specific_gravity',
-          value: specificGravity,
-          unit: '-',
-        },
-        {
-          variable: 'alcohol_by_volume',
-          value: alcoholByVolume,
-          unit: 'vol.-%',
-        },
-        {
-          variable: 'alcohol_by_mass',
-          value: alcoholByMass,
-          unit: 'wt.-%',
-        }
-      ]
+  incomingData.subscribe((data) => stream.write(data));
+  incomingData.subscribe((data) => console.log(data));
 
-      const filteredData = data.filter(x => x.value !== null);
-      console.log('Received data');
-      db.writeData(filteredData);
-    }
-  })
-
+  // scan for all devices, allow duplicates (as we need to receive new data continously)
+  // unable to filter by UUID as noble filters by serviceUUID not by BeaconUUID
+  noble.startScanning([], true);
 
   button.watch(async (err, value) => {
     if (err) {
       console.log(err);
     }
+    buttonPressed();
+  });
 
-    console.log('Button was pressed.');
-
-    const lastStartTime = await db.queryLastStartTime();
-    console.log(`isFermentationRunning: ${Boolean(lastStartTime)}  ${lastStartTime ? lastStartTime : ''}`);
-
-    const event = buttonEvent(lastStartTime);
-    console.log(`buttonEvent (${event.title})`);
-
-    if (lastStartTime)
-    {
-      // fermentation should be stopped
-      db.writeEvent(event);
-      ledOff();
-    }
-    else
-    {
-      // fermentation should be started
-      const specificGravity = await db.querySpecificGravity();
-      console.log(`specificGravity: ${specificGravity}`);
-
-      if (specificGravity)
-      {
-        // start fermentation if specificGravity is valid
-        specificGravityAtStart = specificGravity;
-        db.writeEvent(event);
-        ledOn();
-      }
-      else {
-        // unable to start fermentation due to invalid specificGravity
-        console.log('Unable to start fermentation (no value for `specificGravity`)');
-        ledBlink();
-      }
-    }
-  })
-
-
-  process.on('SIGINT', () => {
-    Bleacon.stopScanning();
+  process.on("SIGINT", () => {
+    noble.stopScanning();
     led.unexport();
     button.unexport();
   });
