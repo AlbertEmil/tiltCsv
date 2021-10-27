@@ -1,8 +1,7 @@
 "use strict";
 
-const moment = require("moment");
-
 const config = require("./config");
+const utils = require("./utils");
 
 const csvArray = (dataArray) => {
   const arr = dataArray.map((x) => {
@@ -19,12 +18,12 @@ const csvString = (data, sep) => {
 };
 
 const prettify = (data) => {
-  const timestamp = moment().format(config.TIMESTAMP_FORMAT);
+  const timestamp = utils.timestamp(config.DATA_TIMESTAMP_FORMAT);
   return [
     {
       variable: "timestamp",
       value: timestamp,
-      unit: config.TIMESTAMP_FORMAT,
+      unit: config.DATA_TIMESTAMP_FORMAT,
     },
     {
       variable: "temperature",

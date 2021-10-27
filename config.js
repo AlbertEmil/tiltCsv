@@ -16,14 +16,17 @@ config.TILT_RED_ADDRESS = "d0bf238b9395";
 config.THROTTLE_DATA_MS = 30 * 60 * 1000; // 30 minutes
 
 // data formatting & csv settings
-config.CSV_BASE_NAME = "data.csv";
-config.ROTATE_CSV_INTERVAL = "2h";  // https://github.com/iccicci/rotating-file-stream#interval
+config.DATA_DIR = "export";
+config.FILE_SUFFIX = ".csv";
+config.FILENAME_TIMESTAMP_FORMAT = "YYYYMMDD";
+config.FILENAME_BASE = "data";
+
 config.CSV_DELIMITER = ";";
 config.CSV_OPTIONS = {
   headers: false,
   writeHeaders: false,
   delimiter: ";",
 };
-config.TIMESTAMP_FORMAT = "DD.MM.YYYY HH:mm:ss";
+config.DATA_TIMESTAMP_FORMAT = "DD.MM.YYYY HH:mm:ss";
 
 module.exports = config;

@@ -11,15 +11,10 @@ const rfs = require("rotating-file-stream");
 const ble = require("./ble");
 const calculator = require("./calculator");
 const config = require("./config");
+const file = require("./file");
 const parser = require("./parser");
 
 let runState = null;
-
-const stream = rfs.createStream(config.CSV_BASE_NAME, {
-  // TODO: Use compression ?
-  // compress: "gzip",
-  interval: config.ROTATE_CSV_INTERVAL,
-});
 
 const button = new Gpio(config.BUTTON_PIN, "in", "rising", {
   debounceTimeout: config.BUTTON_DEBOUNCE_MS,
@@ -40,15 +35,14 @@ const loadRunState = () => {
     const rawdata = fs.readFileSync("runState.json");
     runState = JSON.parse(rawdata).isRunning;
     console.log("Run state loaded: ", runState);
-  }
-  catch (_) {
+  } catch (_) {
     runState = false;
     console.log("Run state was not saved. Set state to: ", runState);
   }
-
 };
 
 const saveRunState = () => {
+  // TODO: Add timestamp to JSON object for better debugging
   const data = JSON.stringify({ isRunning: runState });
   fs.writeFileSync("runState.json", data);
   console.log("Run state saved: ", runState);
@@ -61,16 +55,16 @@ const saveRunState = () => {
   setLedState();
 
   const incomingData = fromEvent(noble, "discover").pipe(
-    filter(_ => runState),
-    filter(x => x.uuid == config.TILT_RED_ADDRESS),
+    filter((_) => runState),
+    filter((x) => x.uuid == config.TILT_RED_ADDRESS),
     throttleTime(config.THROTTLE_DATA_MS),
-    map(x => ble.parse(x)),
-    map(x => calculator.calculate(x)),
-    map(x => parser.prettify(x)),
-    map(x => parser.csvString(x))
+    map((x) => ble.parse(x)),
+    map((x) => calculator.calculate(x)),
+    map((x) => parser.prettify(x)),
+    map((x) => parser.csvString(x))
   );
 
-  incomingData.subscribe((data) => stream.write(data));
+  incomingData.subscribe((data) => file.writeCsvData(data));
   incomingData.subscribe((data) => console.log(data));
 
   // scan for all devices, allow duplicates (as we need to receive new data continously)
@@ -89,5 +83,4 @@ const saveRunState = () => {
     led.unexport();
     button.unexport();
   });
-
 })();
