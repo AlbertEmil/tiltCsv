@@ -13,6 +13,7 @@ const calculator = require("./calculator");
 const config = require("./config");
 const file = require("./file");
 const parser = require("./parser");
+const utils = require("./utils");
 
 let runState = null;
 
@@ -42,8 +43,10 @@ const loadRunState = () => {
 };
 
 const saveRunState = () => {
-  // TODO: Add timestamp to JSON object for better debugging
-  const data = JSON.stringify({ isRunning: runState });
+  const data = JSON.stringify({
+    changedAt: utils.timestamp("YYYYMMDD-HHmmss"),
+    isRunning: runState,
+  });
   fs.writeFileSync("runState.json", data);
   console.log("Run state saved: ", runState);
 };
