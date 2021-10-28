@@ -22,11 +22,6 @@ config.FILENAME_TIMESTAMP_FORMAT = "YYYYMMDD";
 config.FILENAME_BASE = "data";
 
 config.CSV_DELIMITER = ";";
-config.CSV_OPTIONS = {
-  headers: false,
-  writeHeaders: false,
-  delimiter: ";",
-};
 config.DATA_TIMESTAMP_FORMAT = "DD.MM.YYYY HH:mm:ss";
 
 module.exports = config;

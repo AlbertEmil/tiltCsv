@@ -64,7 +64,7 @@ const saveRunState = () => {
     map((x) => ble.parse(x)),
     map((x) => calculator.calculate(x)),
     map((x) => parser.prettify(x)),
-    map((x) => parser.csvString(x))
+    map((x) => parser.csvString(x, config.CSV_DELIMITER))
   );
 
   incomingData.subscribe((data) => file.writeCsvData(data));
