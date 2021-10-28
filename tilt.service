@@ -1,9 +1,7 @@
 [Unit]
 Description=NodeJS client for Tilt Hydrometer
-Documentation=https://github.com/AlbertEmil/tilt
-AssertPathExists=/home/pi/tilt
-Wants=influxdb.service
-After=influxdb.service
+Documentation=https://github.com/AlbertEmil/tiltCsv
+AssertPathExists=/home/pi/tilt/
 
 [Service]
 WorkingDirectory=/home/pi/tilt/
@@ -14,7 +12,7 @@ StartLimitBurst=3
 StartLimitInterval=20
 StandardOutput=syslog
 StandardError=syslog
-SyslogIdentifier=tilt-nodejs-client
+SyslogIdentifier=tilt-client
 User=pi
 Group=pi
 
