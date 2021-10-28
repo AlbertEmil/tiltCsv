@@ -11,7 +11,7 @@ const specificGravity = (parsedPeripheral) => {
 const degreePlato = (specGravity) => {
   return (
     -616.868 +
-    111.14 * specGravity -
+    1111.14 * specGravity -
     630.272 * specGravity ** 2 +
     135.997 * specGravity ** 3
   );
