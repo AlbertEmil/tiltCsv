@@ -26,6 +26,11 @@ const prettify = (data) => {
       unit: config.DATA_TIMESTAMP_FORMAT,
     },
     {
+      variable: "degree_plato",
+      value: data.plato,
+      unit: "°P",
+    },
+    {
       variable: "temperature",
       value: data.temperature,
       unit: "°C",
@@ -34,11 +39,6 @@ const prettify = (data) => {
       variable: "specific_gravity",
       value: data.specGravity,
       unit: "-",
-    },
-    {
-      variable: "degree_plato",
-      value: data.plato,
-      unit: "°P",
     },
   ].filter((x) => x.value !== null);
 };
